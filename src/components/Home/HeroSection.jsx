@@ -98,7 +98,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section id="home" className="homepage-section py-24 overflow-hidden text-white">
+    <section id="home" className="homepage-section py-10 md:py-24 overflow-hidden text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Content Grid */}
         <motion.div

@@ -12,11 +12,11 @@ function HomePage() {
   return (
     <div className="min-h-screen relative">
       {/* Main background elements that span the entire page */}
-      <div className="fixed inset-0 homepage-background"></div>
-      <div className="fixed inset-0 homepage-grid-overlay"></div>
-      <div className="fixed homepage-glow glow-cyan top-1/4 left-1/4"></div>
-      <div className="fixed homepage-glow glow-fuchsia bottom-1/3 right-1/4"></div>
-      <div className="fixed homepage-glow glow-blue top-2/3 left-1/3"></div>
+      <div className="hidden md:block fixed inset-0 homepage-background"></div>
+      <div className="hidden md:block fixed inset-0 homepage-grid-overlay"></div>
+      <div className="hidden md:block fixed homepage-glow glow-cyan top-1/4 left-1/4"></div>
+      <div className="hidden md:block fixed homepage-glow glow-fuchsia bottom-1/3 right-1/4"></div>
+      <div className="hidden md:block fixed homepage-glow glow-blue top-2/3 left-1/3"></div>
       
       <Header />
       <main className="relative z-10">
