@@ -36,7 +36,7 @@ const Blogs = () => {
     key: "createdAt",
     direction: "descending"
   });
-  
+
   // Create refs for Quill editors
   const quillNewRef = useRef(null);
   const quillEditRef = useRef(null);
@@ -48,9 +48,9 @@ const Blogs = () => {
     ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
     ['blockquote', 'code-block'],
     [{ 'header': 1 }, { 'header': 2 }, { 'header': 3 }],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
-    [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+    [{ 'script': 'sub' }, { 'script': 'super' }],      // superscript/subscript
+    [{ 'indent': '-1' }, { 'indent': '+1' }],          // outdent/indent
     [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
     [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults
     [{ 'align': [] }],
@@ -71,12 +71,12 @@ const Blogs = () => {
             toolbar: toolbarOptions
           }
         });
-        
+
         // Set initial content if any
         if (newBlog.content) {
           newQuillInstance.current.root.innerHTML = newBlog.content;
         }
-        
+
         // Update content state when editor changes
         newQuillInstance.current.on('text-change', () => {
           setNewBlog(prev => ({
@@ -86,7 +86,7 @@ const Blogs = () => {
         });
       });
     }
-    
+
     // Clean up function
     return () => {
       if (!showAddModal && newQuillInstance.current) {
@@ -106,12 +106,12 @@ const Blogs = () => {
             toolbar: toolbarOptions
           }
         });
-        
+
         // Set initial content
         if (editBlog.content) {
           editQuillInstance.current.root.innerHTML = editBlog.content;
         }
-        
+
         // Update content state when editor changes
         editQuillInstance.current.on('text-change', () => {
           setEditBlog(prev => ({
@@ -121,7 +121,7 @@ const Blogs = () => {
         });
       });
     }
-    
+
     // Clean up function
     return () => {
       if (!editingBlog && editQuillInstance.current) {
@@ -318,7 +318,7 @@ const Blogs = () => {
         const div = document.createElement('div');
         div.innerHTML = blog.content;
         const plainTextContent = div.textContent || div.innerText || '';
-        
+
         return (
           blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           plainTextContent.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -344,7 +344,7 @@ const Blogs = () => {
           const divA = document.createElement('div');
           divA.innerHTML = a[sortConfig.key];
           const aValue = (divA.textContent || divA.innerText || '').toLowerCase();
-          
+
           const divB = document.createElement('div');
           divB.innerHTML = b[sortConfig.key];
           const bValue = (divB.textContent || divB.innerText || '').toLowerCase();
@@ -418,7 +418,7 @@ const Blogs = () => {
     const div = document.createElement('div');
     div.innerHTML = htmlContent;
     const plainText = div.textContent || div.innerText || '';
-    
+
     if (plainText.length <= maxLength) return plainText;
     return plainText.substr(0, maxLength) + '...';
   };
@@ -929,17 +929,17 @@ const Blogs = () => {
       <AnimatePresence>
         {editingBlog && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block">
-              <div
-                className="fixed inset-0 transition-opacity"
-                aria-hidden="true"
-                onClick={() => setEditingBlog(null)}
-              >
-                <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-              </div>
+            {/* Backdrop with lower z-index */}
+            <div
+              className="fixed inset-0 bg-gray-500/70 bg-opacity-75 transition-opacity z-40"
+              aria-hidden="true"
+              onClick={() => setEditingBlog(null)}
+            />
 
+            {/* Modal container */}
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block">
               <motion.div
-                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
+                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full relative z-50"
                 variants={modalVariants}
                 initial="hidden"
                 animate="visible"
@@ -988,7 +988,6 @@ const Blogs = () => {
 
                     <div>
                       <label htmlFor="edit-content" className="block text-sm font-medium text-gray-700">Content</label>
-                      {/* Quill Editor Container for Edit */}
                       <div className="mt-1 quill-container">
                         <div ref={quillEditRef} style={{ height: "300px" }}></div>
                       </div>
@@ -1020,6 +1019,7 @@ const Blogs = () => {
           </div>
         )}
       </AnimatePresence>
+
 
       {/* Confirm Delete Modal */}
       <AnimatePresence>

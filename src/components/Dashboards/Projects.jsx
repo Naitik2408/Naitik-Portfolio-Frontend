@@ -831,22 +831,23 @@ const Projects = () => {
       <AnimatePresence>
         {editingProject && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block">
-              <div
-                className="fixed inset-0 transition-opacity"
-                aria-hidden="true"
-                onClick={() => setEditingProject(null)}
-              >
-                <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-              </div>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-gray-500/70 bg-opacity-75 transition-opacity z-40"
+              aria-hidden="true"
+              onClick={() => setEditingProject(null)}
+            />
 
+            {/* Modal container */}
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block">
               <motion.div
-                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full"
+                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full relative z-50"
                 variants={modalVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
               >
+                {/* Header */}
                 <div className="bg-indigo-600 px-4 py-5 sm:px-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium leading-6 text-white">Edit Project</h3>
@@ -859,6 +860,7 @@ const Projects = () => {
                   </div>
                 </div>
 
+                {/* Body */}
                 <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 max-h-[calc(100vh-200px)] overflow-y-auto">
                   <div className="space-y-4">
                     <div>
@@ -906,15 +908,19 @@ const Projects = () => {
                       <input
                         type="text"
                         id="edit-technologies"
-                        value={Array.isArray(editProject.technologies) ? editProject.technologies.join(", ") : editProject.technologies || ""}
-                        onChange={(e) => setEditProject({
-                          ...editProject,
-                          technologies: e.target.value.split(",").map((tech) => tech.trim())
-                        })}
+                        value={
+                          Array.isArray(editProject.technologies)
+                            ? editProject.technologies.join(", ")
+                            : editProject.technologies || ""
+                        }
+                        onChange={(e) =>
+                          setEditProject({
+                            ...editProject,
+                            technologies: e.target.value.split(",").map((tech) => tech.trim())
+                          })
+                        }
                         className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
                       />
-
-                      {/* Preview of the tech tags */}
                       {Array.isArray(editProject.technologies) && editProject.technologies.length > 0 && editProject.technologies[0] !== "" && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {editProject.technologies.map((tech, index) => (
@@ -956,6 +962,7 @@ const Projects = () => {
                   </div>
                 </div>
 
+                {/* Footer */}
                 <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                   <button
                     type="button"
@@ -977,6 +984,7 @@ const Projects = () => {
           </div>
         )}
       </AnimatePresence>
+
 
       {/* Confirm Delete Modal */}
       <AnimatePresence>
