@@ -4,6 +4,8 @@ import { Calendar, User, Clock, ArrowLeft, ThumbsUp, Bookmark, Share2, Tag, Spar
 import Header from "../components/Common/Header";
 import Footer from "../components/Common/Footer";
 import { motion, AnimatePresence } from "framer-motion";
+// Import Quill core CSS for proper styling of rendered HTML content
+import "quill/dist/quill.core.css";
 
 const BlogPostPage = () => {
   const { id } = useParams();
@@ -12,7 +14,6 @@ const BlogPostPage = () => {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [showToc, setShowToc] = useState(false);
   const [error, setError] = useState(null);
 
   // Get a random tech class for tags with color scheme similar to HeroSection
@@ -32,6 +33,26 @@ const BlogPostPage = () => {
     return classes[tagIndex];
   };
 
+  // Extract plain text from HTML for excerpts
+  const extractPlainText = (htmlContent) => {
+    if (!htmlContent) return "";
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
+  
+  // Count words in plain text
+  const countWords = (text) => {
+    return text.split(/\s+/).filter(Boolean).length;
+  };
+  
+  // Format excerpt
+  const formatExcerpt = (htmlContent, maxLength = 150) => {
+    const plainText = extractPlainText(htmlContent);
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + "...";
+  };
+
   useEffect(() => {
     // Reset scroll position when the blog post changes
     window.scrollTo(0, 0);
@@ -40,6 +61,7 @@ const BlogPostPage = () => {
       setLoading(true);
       setError(null);
       try {
+        console.log(`Fetching blog post with ID: ${id}`);
         // Use the API endpoint to get the specific blog post
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/blogs/${id}`);
         
@@ -48,6 +70,12 @@ const BlogPostPage = () => {
         }
         
         const blogData = await response.json();
+        console.log("Blog data received:", blogData);
+        
+        // Extract plain text for word counting and reading time calculation
+        const plainText = extractPlainText(blogData.content);
+        const wordCount = countWords(plainText);
+        const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
         
         // Format the blog post data
         const formattedPost = {
@@ -55,14 +83,14 @@ const BlogPostPage = () => {
           _id: blogData._id,
           title: blogData.title,
           content: blogData.content,
-          excerpt: blogData.content.substring(0, 150) + "...",
+          excerpt: formatExcerpt(blogData.content, 150),
           date: new Date(blogData.createdAt).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           }),
           author: blogData.author || "Anonymous",
-          readTime: `${Math.ceil(blogData.content.split(' ').length / 200)} min read`,
+          readTime: readTime,
           category: blogData.category || "General",
           imageUrl: blogData.imageUrl || "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
           tags: blogData.tags || ["Web Development"],
@@ -80,27 +108,34 @@ const BlogPostPage = () => {
           
           if (relatedResponse.ok) {
             const relatedData = await relatedResponse.json();
+            console.log("Related posts data:", relatedData);
             
             // Filter out the current post and format the data
             const formattedRelated = relatedData
               .filter((blog) => blog._id !== id)
-              .map((blog) => ({
-                id: blog._id,
-                _id: blog._id,
-                title: blog.title,
-                excerpt: blog.content.substring(0, 150) + "...",
-                date: new Date(blog.createdAt).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }),
-                author: blog.author || "Anonymous",
-                readTime: `${Math.ceil(blog.content.split(' ').length / 200)} min read`,
-                category: blog.category || "General",
-                imageUrl: blog.imageUrl || "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
-                tags: blog.tags || ["Web Development"],
-                likes: blog.likes || 0
-              }))
+              .map((blog) => {
+                const plainText = extractPlainText(blog.content);
+                const wordCount = countWords(plainText);
+                const readTime = `${Math.max(1, Math.ceil(wordCount / 200))} min read`;
+                
+                return {
+                  id: blog._id,
+                  _id: blog._id,
+                  title: blog.title,
+                  excerpt: formatExcerpt(blog.content, 150),
+                  date: new Date(blog.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }),
+                  author: blog.author || "Anonymous",
+                  readTime: readTime,
+                  category: blog.category || "General",
+                  imageUrl: blog.imageUrl || "https://images.unsplash.com/photo-1498050108023-c5249f4df085",
+                  tags: blog.tags || ["Web Development"],
+                  likes: blog.likes || 0
+                };
+              })
               .slice(0, 3); // Limit to 3 related posts
               
             setRelatedPosts(formattedRelated);
@@ -118,27 +153,6 @@ const BlogPostPage = () => {
       fetchPost();
     }
   }, [id]);
-
-  // Generate table of contents from content
-  const generateToc = () => {
-    if (!post || !post.content) return [];
-    
-    const headingRegex = /<h([2-3])[^>]*id="([^"]+)"[^>]*>([^<]+)<\/h\1>/g;
-    const toc = [];
-    let match;
-
-    while ((match = headingRegex.exec(post.content)) !== null) {
-      toc.push({
-        level: parseInt(match[1], 10),
-        id: match[2],
-        title: match[3].trim()
-      });
-    }
-
-    return toc;
-  };
-
-  const toc = generateToc();
 
   // Animation variants
   const contentVariants = {
@@ -304,6 +318,19 @@ const BlogPostPage = () => {
             
             <button 
               className="p-3 rounded-full backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all"
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: post.title,
+                    text: post.excerpt,
+                    url: window.location.href,
+                  }).catch(console.error);
+                } else {
+                  // Fallback
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Link copied to clipboard!');
+                }
+              }}
             >
               <Share2 className="h-5 w-5" />
               <span className="sr-only">Share</span>
@@ -312,142 +339,65 @@ const BlogPostPage = () => {
         </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
-            {/* Table of Contents - Desktop */}
-            {toc.length > 0 && (
-              <div className="hidden lg:block col-span-1">
-                <div className="sticky top-24">
-                  <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl p-6">
-                    <button 
-                      className="flex items-center justify-between w-full text-left mb-4"
-                      onClick={() => setShowToc(!showToc)}
-                    >
-                      <h3 className="text-lg font-medium text-white">Table of Contents</h3>
-                    </button>
-                    <nav>
-                      <ul className="space-y-3">
-                        {toc.map((heading, index) => (
-                          <li key={index} className={`${heading.level === 3 ? "ml-4" : ""}`}>
-                            <a
-                              href={`#${heading.id}`}
-                              className="text-slate-300 hover:text-cyan-300 transition-colors text-sm block py-1"
-                            >
-                              {heading.title}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </nav>
-                  </div>
-                </div>
+          <div className="max-w-3xl mx-auto">
+            {/* Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <div className="mb-8 flex flex-wrap gap-3">
+                {post.tags.map(tag => (
+                  <Link 
+                    key={tag} 
+                    to={`/blog?tag=${tag}`}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all hover:-translate-y-1 border ${getTechClass(tag)}`}
+                  >
+                    #{tag}
+                  </Link>
+                ))}
               </div>
             )}
-
-            {/* Main Content */}
-            <div className={toc.length > 0 ? "col-span-1 lg:col-span-3" : "col-span-1 lg:col-span-4"}>
-              {/* Tags */}
-              {post.tags && post.tags.length > 0 && (
-                <div className="mb-8 flex flex-wrap gap-3">
-                  {post.tags.map(tag => (
-                    <Link 
-                      key={tag} 
-                      to={`/blog?tag=${tag}`}
-                      className={`px-3 py-1.5 rounded-full text-sm transition-all hover:-translate-y-1 border ${getTechClass(tag)}`}
-                    >
-                      #{tag}
-                    </Link>
-                  ))}
-                </div>
-              )}
-              
-              {/* Table of Contents - Mobile */}
-              {toc.length > 0 && (
-                <div className="lg:hidden mb-8">
-                  <button 
-                    onClick={() => setShowToc(!showToc)} 
-                    className="flex items-center justify-between w-full p-4 backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl text-white mb-2"
-                  >
-                    <span className="font-medium">Table of Contents</span>
-                    <span className={`transform transition-transform ${showToc ? 'rotate-180' : ''}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </span>
-                  </button>
-                  
-                  <AnimatePresence>
-                    {showToc && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl p-4"
-                      >
-                        <nav>
-                          <ul className="space-y-3">
-                            {toc.map((heading, index) => (
-                              <li key={index} className={`${heading.level === 3 ? "ml-4" : ""}`}>
-                                <a
-                                  href={`#${heading.id}`}
-                                  className="text-slate-300 hover:text-cyan-300 transition-colors text-sm block py-1"
-                                >
-                                  {heading.title}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        </nav>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-              
-              {/* Post Content */}
-              <motion.article 
-                className="prose prose-lg prose-invert max-w-none backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl p-6 md:p-10"
-                variants={contentVariants}
-                initial="hidden"
-                animate="visible"
+            
+            {/* Post Content with Quill formatting */}
+            <motion.article 
+              className="prose prose-lg prose-invert max-w-none backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl p-6 md:p-10 quill-content"
+              variants={contentVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <div
+                dangerouslySetInnerHTML={{ __html: post.content }}
+                className="prose-headings:text-white prose-headings:scroll-mt-24 prose-a:text-cyan-300 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-pre:bg-white/10 prose-pre:backdrop-blur-md prose-code:text-cyan-300"
+              ></div>
+            </motion.article>
+            
+            {/* Post Actions */}
+            <div className="mt-10 flex flex-wrap justify-between items-center">
+              <Link 
+                to="/blog" 
+                className="inline-flex items-center text-indigo-300 hover:text-indigo-200 transition-colors"
               >
-                <div
-                  dangerouslySetInnerHTML={{ __html: post.content || '' }}
-                  className="prose-headings:text-white prose-headings:scroll-mt-24 prose-a:text-cyan-300 prose-a:no-underline hover:prose-a:underline prose-img:rounded-xl prose-pre:bg-white/10 prose-pre:backdrop-blur-md prose-code:text-cyan-300"
-                ></div>
-              </motion.article>
+                <ArrowLeft className="mr-2 h-5 w-5" /> 
+                <span>Back to all articles</span>
+              </Link>
               
-              {/* Post Actions */}
-              <div className="mt-10 flex flex-wrap justify-between items-center">
-                <Link 
-                  to="/blog" 
-                  className="inline-flex items-center text-indigo-300 hover:text-indigo-200 transition-colors"
+              <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                <button
+                  onClick={() => setLiked(!liked)}
+                  className={`flex items-center space-x-2 ${
+                    liked ? "text-indigo-300" : "text-slate-400 hover:text-indigo-300"
+                  } transition-colors`}
                 >
-                  <ArrowLeft className="mr-2 h-5 w-5" /> 
-                  <span>Back to all articles</span>
-                </Link>
+                  <ThumbsUp className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
+                  <span>{post.likes} {liked ? "Liked" : "Likes"}</span>
+                </button>
                 
-                <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-                  <button
-                    onClick={() => setLiked(!liked)}
-                    className={`flex items-center space-x-2 ${
-                      liked ? "text-indigo-300" : "text-slate-400 hover:text-indigo-300"
-                    } transition-colors`}
-                  >
-                    <ThumbsUp className={`h-5 w-5 ${liked ? "fill-current" : ""}`} />
-                    <span>{post.likes} {liked ? "Liked" : "Likes"}</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setBookmarked(!bookmarked)}
-                    className={`flex items-center space-x-2 ${
-                      bookmarked ? "text-amber-300" : "text-slate-400 hover:text-amber-300"
-                    } transition-colors`}
-                  >
-                    <Bookmark className={`h-5 w-5 ${bookmarked ? "fill-current" : ""}`} />
-                    <span>{bookmarked ? "Saved" : "Save"}</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setBookmarked(!bookmarked)}
+                  className={`flex items-center space-x-2 ${
+                    bookmarked ? "text-amber-300" : "text-slate-400 hover:text-amber-300"
+                  } transition-colors`}
+                >
+                  <Bookmark className={`h-5 w-5 ${bookmarked ? "fill-current" : ""}`} />
+                  <span>{bookmarked ? "Saved" : "Save"}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -479,6 +429,9 @@ const BlogPostPage = () => {
                           src={post.imageUrl} 
                           alt={post.title} 
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.src = "https://images.unsplash.com/photo-1498050108023-c5249f4df085";
+                          }}
                         />
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent"></div>
@@ -526,6 +479,140 @@ const BlogPostPage = () => {
             </div>
           </section>
         )}
+
+        {/* Styling for Quill content */}
+        <style jsx>{`
+          /* Quill content specific styling */
+          .quill-content p {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+          }
+          
+          .quill-content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: white;
+          }
+          
+          .quill-content h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.875rem;
+            color: white;
+          }
+          
+          .quill-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: white;
+          }
+          
+          .quill-content a {
+            color: #38bdf8;
+            text-decoration: underline;
+            transition: color 0.2s;
+          }
+          
+          .quill-content a:hover {
+            color: #0ea5e9;
+          }
+          
+          .quill-content ul, .quill-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+          }
+          
+          .quill-content ul {
+            list-style-type: disc;
+          }
+          
+          .quill-content ol {
+            list-style-type: decimal;
+          }
+          
+          .quill-content blockquote {
+            border-left: 4px solid #38bdf8;
+            padding-left: 1rem;
+            margin-left: 0;
+            margin-right: 0;
+            font-style: italic;
+            color: #94a3b8;
+          }
+          
+          .quill-content pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+          }
+          
+          .quill-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-family: monospace;
+          }
+          
+          .quill-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+          }
+          
+          /* Quill-specific element support */
+          .quill-content .ql-align-center {
+            text-align: center;
+          }
+          
+          .quill-content .ql-align-right {
+            text-align: right;
+          }
+          
+          .quill-content .ql-align-justify {
+            text-align: justify;
+          }
+          
+          .quill-content .ql-size-small {
+            font-size: 0.75em;
+          }
+          
+          .quill-content .ql-size-large {
+            font-size: 1.5em;
+          }
+          
+          .quill-content .ql-size-huge {
+            font-size: 2.5em;
+          }
+          
+          .quill-content .ql-indent-1 {
+            padding-left: 3em;
+          }
+          
+          .quill-content .ql-indent-2 {
+            padding-left: 6em;
+          }
+          
+          .quill-content .ql-video {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%;
+            position: relative;
+            margin-bottom: 1rem;
+          }
+          
+          .quill-content .ql-video iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+          }
+        `}</style>
       </main>
       
       <Footer />

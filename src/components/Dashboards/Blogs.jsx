@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Edit, Trash2, X, Search, Filter, ChevronDown, Download, RefreshCw,
@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { useAppSelector } from "../../Redux/hooks";
 import { selectAuth } from "../../Redux/authSlice";
+// Import Quill CSS directly (will be included in the bundle)
+import "quill/dist/quill.snow.css";
 
 const Blogs = () => {
   const { token, user } = useAppSelector(selectAuth);
@@ -34,6 +36,99 @@ const Blogs = () => {
     key: "createdAt",
     direction: "descending"
   });
+  
+  // Create refs for Quill editors
+  const quillNewRef = useRef(null);
+  const quillEditRef = useRef(null);
+  const newQuillInstance = useRef(null);
+  const editQuillInstance = useRef(null);
+
+  // Quill toolbar options
+  const toolbarOptions = [
+    ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+    ['blockquote', 'code-block'],
+    [{ 'header': 1 }, { 'header': 2 }, { 'header': 3 }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+    [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+    [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+    [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults
+    [{ 'align': [] }],
+    ['link', 'image'],                                // link and image
+    ['clean']                                         // remove formatting button
+  ];
+
+  // Initialize Quill editors when the modals open
+  useEffect(() => {
+    if (showAddModal && quillNewRef.current && !newQuillInstance.current) {
+      // We need to dynamically import Quill because it may have window dependencies
+      import('quill').then(module => {
+        const Quill = module.default;
+        newQuillInstance.current = new Quill(quillNewRef.current, {
+          theme: 'snow',
+          placeholder: 'Write your blog post content here...',
+          modules: {
+            toolbar: toolbarOptions
+          }
+        });
+        
+        // Set initial content if any
+        if (newBlog.content) {
+          newQuillInstance.current.root.innerHTML = newBlog.content;
+        }
+        
+        // Update content state when editor changes
+        newQuillInstance.current.on('text-change', () => {
+          setNewBlog(prev => ({
+            ...prev,
+            content: newQuillInstance.current.root.innerHTML
+          }));
+        });
+      });
+    }
+    
+    // Clean up function
+    return () => {
+      if (!showAddModal && newQuillInstance.current) {
+        newQuillInstance.current = null;
+      }
+    };
+  }, [showAddModal, newBlog.content]);
+
+  // Initialize edit editor
+  useEffect(() => {
+    if (editingBlog && quillEditRef.current && !editQuillInstance.current) {
+      import('quill').then(module => {
+        const Quill = module.default;
+        editQuillInstance.current = new Quill(quillEditRef.current, {
+          theme: 'snow',
+          modules: {
+            toolbar: toolbarOptions
+          }
+        });
+        
+        // Set initial content
+        if (editBlog.content) {
+          editQuillInstance.current.root.innerHTML = editBlog.content;
+        }
+        
+        // Update content state when editor changes
+        editQuillInstance.current.on('text-change', () => {
+          setEditBlog(prev => ({
+            ...prev,
+            content: editQuillInstance.current.root.innerHTML
+          }));
+        });
+      });
+    }
+    
+    // Clean up function
+    return () => {
+      if (!editingBlog && editQuillInstance.current) {
+        editQuillInstance.current = null;
+      }
+    };
+  }, [editingBlog, editBlog.content]);
 
   // Fetch blogs from the backend
   useEffect(() => {
@@ -215,22 +310,44 @@ const Blogs = () => {
     }
   };
 
-  // Filter blogs based on search term
+  // Filter blogs based on search term - modified to handle HTML content
   const filteredBlogs = useMemo(() => {
     return blogs
       .filter(blog => {
+        // Create a temporary div to strip HTML tags for content search
+        const div = document.createElement('div');
+        div.innerHTML = blog.content;
+        const plainTextContent = div.textContent || div.innerText || '';
+        
         return (
           blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          blog.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          plainTextContent.toLowerCase().includes(searchTerm.toLowerCase()) ||
           blog.author.toLowerCase().includes(searchTerm.toLowerCase())
         );
       })
       .sort((a, b) => {
         if (!sortConfig) return 0;
 
-        if (sortConfig.key === 'title' || sortConfig.key === 'author' || sortConfig.key === 'content') {
+        if (sortConfig.key === 'title' || sortConfig.key === 'author') {
           const aValue = a[sortConfig.key].toLowerCase();
           const bValue = b[sortConfig.key].toLowerCase();
+
+          if (sortConfig.direction === 'ascending') {
+            return aValue.localeCompare(bValue);
+          } else {
+            return bValue.localeCompare(aValue);
+          }
+        }
+
+        if (sortConfig.key === 'content') {
+          // Strip HTML for content sorting
+          const divA = document.createElement('div');
+          divA.innerHTML = a[sortConfig.key];
+          const aValue = (divA.textContent || divA.innerText || '').toLowerCase();
+          
+          const divB = document.createElement('div');
+          divB.innerHTML = b[sortConfig.key];
+          const bValue = (divB.textContent || divB.innerText || '').toLowerCase();
 
           if (sortConfig.direction === 'ascending') {
             return aValue.localeCompare(bValue);
@@ -296,10 +413,14 @@ const Blogs = () => {
     }
   }, [selectAll, filteredBlogs]);
 
-  // Format blog excerpt
-  const formatExcerpt = (content, maxLength = 150) => {
-    if (content.length <= maxLength) return content;
-    return content.substr(0, maxLength) + '...';
+  // Format blog excerpt - extract text from HTML
+  const formatExcerpt = (htmlContent, maxLength = 150) => {
+    const div = document.createElement('div');
+    div.innerHTML = htmlContent;
+    const plainText = div.textContent || div.innerText || '';
+    
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substr(0, maxLength) + '...';
   };
 
   // Format date
@@ -346,8 +467,6 @@ const Blogs = () => {
       }
     }
   };
-
-  console.log('api url: ', import.meta.env.VITE_API_URL);
 
   return (
     <div className="space-y-6">
@@ -588,7 +707,7 @@ const Blogs = () => {
 
                   <div className="mb-4">
                     {expandedBlog === blog._id ? (
-                      <p className="text-gray-600">{blog.content}</p>
+                      <div className="text-gray-600 blog-content" dangerouslySetInnerHTML={{ __html: blog.content }} />
                     ) : (
                       <p className="text-gray-600">{formatExcerpt(blog.content)}</p>
                     )}
@@ -705,7 +824,7 @@ const Blogs = () => {
             {/* Modal container */}
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block">
               <motion.div
-                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full relative z-50"
+                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full relative z-50"
                 variants={modalVariants}
                 initial="hidden"
                 animate="visible"
@@ -756,14 +875,13 @@ const Blogs = () => {
 
                     <div>
                       <label htmlFor="content" className="block text-sm font-medium text-gray-700">Content</label>
-                      <textarea
-                        id="content"
-                        value={newBlog.content}
-                        onChange={(e) => setNewBlog({ ...newBlog, content: e.target.value })}
-                        rows={10}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-                        placeholder="Write your blog post content here..."
-                      />
+                      {/* Quill Editor Container */}
+                      <div className="mt-1 quill-container">
+                        <div ref={quillNewRef} style={{ height: "300px" }}></div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        <p>Use the toolbar above to format your content with headings, lists, images, code blocks and more.</p>
+                      </div>
                     </div>
 
                     <div className="bg-indigo-50 p-4 rounded-md">
@@ -776,6 +894,7 @@ const Blogs = () => {
                           <div className="mt-1 text-xs text-indigo-700">
                             <p className="mb-1">• Use clear, concise language and organize content with headings</p>
                             <p className="mb-1">• Include relevant images to increase engagement</p>
+                            <p className="mb-1">• Use code blocks for technical content</p>
                             <p>• End with a call-to-action to encourage reader interaction</p>
                           </div>
                         </div>
@@ -820,7 +939,7 @@ const Blogs = () => {
               </div>
 
               <motion.div
-                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full"
+                className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
                 variants={modalVariants}
                 initial="hidden"
                 animate="visible"
@@ -869,13 +988,13 @@ const Blogs = () => {
 
                     <div>
                       <label htmlFor="edit-content" className="block text-sm font-medium text-gray-700">Content</label>
-                      <textarea
-                        id="edit-content"
-                        value={editBlog.content || ""}
-                        onChange={(e) => setEditBlog({ ...editBlog, content: e.target.value })}
-                        rows={10}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm"
-                      />
+                      {/* Quill Editor Container for Edit */}
+                      <div className="mt-1 quill-container">
+                        <div ref={quillEditRef} style={{ height: "300px" }}></div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        <p>Use the toolbar above to format your content with headings, lists, images, code blocks and more.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1050,6 +1169,108 @@ const Blogs = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Add styles for proper display of blog content */}
+      <style jsx>{`
+        /* Custom styles for Quill editor */
+        .quill-container .ql-container {
+          min-height: 200px;
+          font-family: inherit;
+          font-size: 1rem;
+          border-bottom-left-radius: 0.375rem;
+          border-bottom-right-radius: 0.375rem;
+        }
+
+        .quill-container .ql-toolbar {
+          border-top-left-radius: 0.375rem;
+          border-top-right-radius: 0.375rem;
+          background-color: #f9fafb;
+          border-color: #e5e7eb;
+        }
+
+        .quill-container .ql-editor {
+          min-height: 200px;
+          font-family: inherit;
+          font-size: 1rem;
+        }
+
+        .quill-container .ql-snow .ql-tooltip {
+          z-index: 100;
+        }
+
+        /* Blog content rendering styles */
+        .blog-content h1 {
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-bottom: 0.75rem;
+          margin-top: 1rem;
+        }
+        
+        .blog-content h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-bottom: 0.75rem;
+          margin-top: 1rem;
+        }
+        
+        .blog-content h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+          margin-top: 0.75rem;
+        }
+        
+        .blog-content p {
+          margin-bottom: 0.75rem;
+        }
+        
+        .blog-content ul, .blog-content ol {
+          padding-left: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        
+        .blog-content ul {
+          list-style-type: disc;
+        }
+        
+        .blog-content ol {
+          list-style-type: decimal;
+        }
+        
+        .blog-content blockquote {
+          border-left: 4px solid #e5e7eb;
+          padding-left: 1rem;
+          color: #6b7280;
+          font-style: italic;
+          margin: 1rem 0;
+        }
+        
+        .blog-content pre {
+          background: #f3f4f6;
+          padding: 0.75rem;
+          border-radius: 0.25rem;
+          overflow-x: auto;
+          margin: 0.75rem 0;
+        }
+        
+        .blog-content code {
+          background: #f3f4f6;
+          padding: 0.15rem 0.3rem;
+          border-radius: 0.25rem;
+          font-size: 0.875rem;
+        }
+        
+        .blog-content a {
+          color: #4f46e5;
+          text-decoration: underline;
+        }
+        
+        .blog-content img {
+          max-width: 100%;
+          height: auto;
+          margin: 0.75rem 0;
+        }
+      `}</style>
     </div>
   );
 };

@@ -7,6 +7,8 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "../components/Common/Header";
 import Footer from "../components/Common/Footer";
+// Import minimal quill core styles for HTML content rendering
+import "quill/dist/quill.core.css";
 
 const BlogPage = () => {
   // State Management
@@ -46,6 +48,17 @@ const BlogPage = () => {
     );
   };
 
+  // Extract plain text from HTML for excerpts
+  const formatExcerpt = (htmlContent, maxLength = 150) => {
+    // Create a temporary element to strip HTML tags
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+    
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + '...';
+  };
+
   // Fetch blogs from API on component mount
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -62,13 +75,20 @@ const BlogPage = () => {
 
         // Process the blog data
         const formattedPosts = data.map((blog) => {
-          const excerpt = blog.content.substring(0, 150) + (blog.content.length > 150 ? "..." : "");
+          // Extract plain text for excerpt
+          const excerpt = formatExcerpt(blog.content, 150);
+          
           const formattedDate = new Date(blog.createdAt).toLocaleDateString("en-US", {
             year: "numeric",
             month: "long",
             day: "numeric",
           });
-          const wordCount = blog.content.split(/\s+/).length;
+          
+          // Calculate word count from plain text, not HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = blog.content;
+          const plainText = tempDiv.textContent || tempDiv.innerText || '';
+          const wordCount = plainText.split(/\s+/).length;
           const readTime = Math.max(1, Math.ceil(wordCount / 200)) + " min read";
 
           return {
@@ -134,7 +154,7 @@ const BlogPage = () => {
       {
         _id: "1",
         title: "Getting Started with React Hooks",
-        content: "React Hooks are a powerful feature introduced in React 16.8 that allow you to use state and other React features without writing a class. In this tutorial, we'll explore the most commonly used hooks and how they can simplify your components...",
+        content: "<h2>Introduction to React Hooks</h2><p>React Hooks are a powerful feature introduced in React 16.8 that allow you to use state and other React features without writing a class. In this tutorial, we'll explore the most commonly used hooks and how they can simplify your components...</p>",
         excerpt: "React Hooks are a powerful feature introduced in React 16.8 that allow you to use state and other React features without writing a class...",
         author: "Jane Smith",
         imageUrl: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -153,7 +173,7 @@ const BlogPage = () => {
       {
         _id: "2",
         title: "Building a RESTful API with Node.js and Express",
-        content: "Express is a minimal and flexible Node.js web application framework that provides a robust set of features for web and mobile applications. In this tutorial, we'll build a complete RESTful API from scratch using Node.js and Express...",
+        content: "<h2>Getting Started with Express</h2><p>Express is a minimal and flexible Node.js web application framework that provides a robust set of features for web and mobile applications. In this tutorial, we'll build a complete RESTful API from scratch using Node.js and Express...</p>",
         excerpt: "Express is a minimal and flexible Node.js web application framework that provides a robust set of features for web and mobile applications...",
         author: "Michael Johnson",
         imageUrl: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -172,7 +192,7 @@ const BlogPage = () => {
       {
         _id: "3",
         title: "Introduction to TailwindCSS: The Utility-First CSS Framework",
-        content: "Tailwind CSS is a utility-first CSS framework packed with classes like flex, pt-4, text-center and rotate-90 that can be composed to build any design, directly in your markup. In this article, we'll explore how to get started with Tailwind and why it's becoming so popular...",
+        content: "<h2>What is Tailwind CSS?</h2><p>Tailwind CSS is a utility-first CSS framework packed with classes like flex, pt-4, text-center and rotate-90 that can be composed to build any design, directly in your markup. In this article, we'll explore how to get started with Tailwind and why it's becoming so popular...</p>",
         excerpt: "Tailwind CSS is a utility-first CSS framework packed with classes like flex, pt-4, text-center and rotate-90 that can be composed to build any design, directly in your markup...",
         author: "Sarah Williams",
         imageUrl: "https://images.unsplash.com/photo-1542831371-29b0f74f9713?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -191,7 +211,7 @@ const BlogPage = () => {
       {
         _id: "4",
         title: "Mastering TypeScript for Modern Web Development",
-        content: "TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. In this comprehensive guide, we'll dive into TypeScript's type system, interfaces, generics, and more to help you write more robust and maintainable code...",
+        content: "<h2>Why Use TypeScript?</h2><p>TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. In this comprehensive guide, we'll dive into TypeScript's type system, interfaces, generics, and more to help you write more robust and maintainable code...</p>",
         excerpt: "TypeScript is a typed superset of JavaScript that compiles to plain JavaScript. In this comprehensive guide, we'll dive into TypeScript's type system...",
         author: "Daniel Lee",
         imageUrl: "https://images.unsplash.com/photo-1565106430482-8f6e74349ca1?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -210,7 +230,7 @@ const BlogPage = () => {
       {
         _id: "5",
         title: "Introduction to Docker for Developers",
-        content: "Docker is a platform for developing, shipping, and running applications inside containers. In this beginner-friendly guide, we'll explore Docker's basic concepts, commands, and build a simple containerized application...",
+        content: "<h2>Docker Basics</h2><p>Docker is a platform for developing, shipping, and running applications inside containers. In this beginner-friendly guide, we'll explore Docker's basic concepts, commands, and build a simple containerized application...</p>",
         excerpt: "Docker is a platform for developing, shipping, and running applications inside containers. In this beginner-friendly guide...",
         author: "Emma Clark",
         imageUrl: "https://images.unsplash.com/photo-1605745341289-5131c14dfde3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -229,7 +249,7 @@ const BlogPage = () => {
       {
         _id: "6",
         title: "The Complete Guide to Modern CSS Grid Layout",
-        content: "CSS Grid Layout is a two-dimensional layout system designed for the web. It lets you lay out items in rows and columns, and offers more control than previous CSS layout methods. In this guide, we'll explore everything you need to know about CSS Grid...",
+        content: "<h2>Understanding CSS Grid</h2><p>CSS Grid Layout is a two-dimensional layout system designed for the web. It lets you lay out items in rows and columns, and offers more control than previous CSS layout methods. In this guide, we'll explore everything you need to know about CSS Grid...</p>",
         excerpt: "CSS Grid Layout is a two-dimensional layout system designed for the web. It lets you lay out items in rows and columns...",
         author: "Alex Turner",
         imageUrl: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&q=80",
@@ -248,14 +268,18 @@ const BlogPage = () => {
     ];
   };
 
-  // Filter and sort posts based on user selections
+  // Filter and sort posts based on user selections - updated to handle HTML content
   const processedPosts = React.useMemo(() => {
     // First, filter the posts
     let filtered = blogPosts.filter((post) => {
-      // Match search query
+      // Match search query - strip HTML for search
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = post.content;
+      const plainTextContent = tempDiv.textContent || tempDiv.innerText || '';
+      
       const matchesSearch = searchQuery === "" ||
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        plainTextContent.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (post.tags && post.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())));
 
       // Match category
@@ -860,7 +884,7 @@ const BlogPage = () => {
                         </motion.article>
                       ))}
 
-                      {/* List View - Replace the existing list view with this improved version */}
+                      {/* List View */}
                       {displayMode === "list" && processedPosts.map((post) => (
                         <motion.article
                           key={post._id}
@@ -1070,6 +1094,91 @@ const BlogPage = () => {
             </motion.button>
           )}
         </AnimatePresence>
+
+        {/* Add styles for blog content */}
+        <style jsx>{`
+          /* Blog content styling */
+          .blog-content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: white;
+          }
+          
+          .blog-content h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.875rem;
+            color: white;
+          }
+          
+          .blog-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: white;
+          }
+          
+          .blog-content p {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+          }
+          
+          .blog-content a {
+            color: #38bdf8;
+            text-decoration: underline;
+            transition: color 0.2s;
+          }
+          
+          .blog-content a:hover {
+            color: #0ea5e9;
+          }
+          
+          .blog-content ul, .blog-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+          }
+          
+          .blog-content ul {
+            list-style-type: disc;
+          }
+          
+          .blog-content ol {
+            list-style-type: decimal;
+          }
+          
+          .blog-content blockquote {
+            border-left: 4px solid #38bdf8;
+            padding-left: 1rem;
+            margin-left: 0;
+            margin-right: 0;
+            font-style: italic;
+            color: #94a3b8;
+          }
+          
+          .blog-content pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+          }
+          
+          .blog-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-family: monospace;
+          }
+          
+          .blog-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+          }
+        `}</style>
       </main>
 
       <Footer />
