@@ -5,6 +5,7 @@ import AboutSection from "../components/Home/AboutSection";
 import SkillsSection from "../components/Home/SkillsSection";
 import ProjectsSection from "../components/Home/ProjectsSection";
 import ContactSection from "../components/Home/ContactSection";
+import ActivitySection from "../components/Home/ActivitySection";
 
 function HomePage() {
   console.log("HomePage component rendered");
@@ -24,6 +25,7 @@ function HomePage() {
         <AboutSection />
         <SkillsSection />
         <ProjectsSection />
+        <ActivitySection />
         <ContactSection />
       </main>
       <Footer />
