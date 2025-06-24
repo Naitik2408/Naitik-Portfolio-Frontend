@@ -169,9 +169,9 @@ const ProjectsSection = () => {
     setCategories(["all", "web", "mobile", "design", "backend"]);
   };
 
-  const filteredProjects = activeFilter === "all" 
-    ? projects 
-    : projects.filter(project => project.category === activeFilter);
+    const filteredProjects = activeFilter === "all" 
+    ? [...projects].reverse()
+    : projects.filter(project => project.category === activeFilter).reverse();
 
   // Smooth scroll to projects when filter changes
   // useEffect(() => {
